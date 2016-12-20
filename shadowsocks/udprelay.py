@@ -175,7 +175,6 @@ class UDPRelay(object):
         #             'UDP handle_server: data is empty after decrypt'
         #         )
         #         return
-        print(len(data), ord(data[0]), ord(data[1]), ord(data[2]), ord(data[3]), ord(data[4]), ord(data[5]))
         header_result = parse_header(data)
         if header_result is None:
             return
