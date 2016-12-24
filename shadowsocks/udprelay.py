@@ -72,6 +72,7 @@ from shadowsocks import encrypt, eventloop, lru_cache, common, shell
 from shadowsocks.common import parse_header, pack_addr, onetimeauth_verify, \
     onetimeauth_gen, ONETIMEAUTH_BYTES, ADDRTYPE_AUTH
 
+
 BUF_SIZE = 65536
 
 
@@ -164,16 +165,16 @@ class UDPRelay(object):
                 return
             else:
                 data = data[3:]
-        # else:
-        #     data, key, iv = encrypt.dencrypt_all(self._password,
-        #                                          self._method,
-        #                                          data)
-        #     # decrypt data
-        #     if not data:
-        #         logging.debug(
-        #             'UDP handle_server: data is empty after decrypt'
-        #         )
-        #         return
+        else:
+            data, key, iv = encrypt.dencrypt_all(self._password,
+                                                 self._method,
+                                                 data)
+            # decrypt data
+            if not data:
+                logging.debug(
+                    'UDP handle_server: data is empty after decrypt'
+                )
+                return
         header_result = parse_header(data)
         if header_result is None:
             return
@@ -183,8 +184,6 @@ class UDPRelay(object):
             server_addr, server_port = self._get_a_server()
         else:
             server_addr, server_port = dest_addr, dest_port
-            '''
-            去掉验证
             # spec https://shadowsocks.org/en/spec/one-time-auth.html
             if self._one_time_auth_enable or addrtype & ADDRTYPE_AUTH:
                 self._one_time_auth_enable = True
@@ -197,7 +196,6 @@ class UDPRelay(object):
                 if onetimeauth_verify(_hash, data, _key) is False:
                     logging.warn('UDP one time auth fail')
                     return
-            '''
         addrs = self._dns_cache.get(server_addr, None)
         if addrs is None:
             addrs = socket.getaddrinfo(server_addr, server_port, 0,
@@ -260,7 +258,6 @@ class UDPRelay(object):
             return
         if self._stat_callback:
             self._stat_callback(self._listen_port, len(data))
-
         if not self._is_local:
             # 接收目标服务器返回的数据和源地址,加密发送回给客户端
             addrlen = len(r_addr[0])
@@ -268,7 +265,8 @@ class UDPRelay(object):
                 # drop
                 return
             data = pack_addr(r_addr[0]) + struct.pack('>H', r_addr[1]) + data
-            response = data
+            response = encrypt.encrypt_all(self._password, self._method, 1,
+                                           data)
             if not response:
                 return
         else:
