@@ -242,7 +242,7 @@ class UDPRelay(object):
             return
         try:
             client.sendto(data, (server_addr, server_port))
-            logging.info('udp forward sendto addr: %s, port: %s' % (server_addr, server_port))
+            logging.info('udp forward sendto addr: %s, port: %s, len: %d' % (server_addr, server_port, len(data)))
         except IOError as e:
             err = eventloop.errno_from_exception(e)
             if err in (errno.EINPROGRESS, errno.EAGAIN):
