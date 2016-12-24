@@ -72,7 +72,6 @@ from shadowsocks import encrypt, eventloop, lru_cache, common, shell
 from shadowsocks.common import parse_header, pack_addr, onetimeauth_verify, \
     onetimeauth_gen, ONETIMEAUTH_BYTES, ADDRTYPE_AUTH
 
-
 BUF_SIZE = 65536
 
 
@@ -149,7 +148,7 @@ class UDPRelay(object):
 
     # 发送给目标服务器,或者发送给代理服务器。  前进方向
     def _handle_server(self):
-        print('UDP handle server')
+        print('handle server')
         server = self._server_socket
         data, r_addr = server.recvfrom(BUF_SIZE)
         key = None
@@ -179,8 +178,6 @@ class UDPRelay(object):
         if header_result is None:
             return
         addrtype, dest_addr, dest_port, header_length = header_result
-
-        print(addrtype, dest_addr, dest_port, header_length)
 
         if self._is_local:
             server_addr, server_port = self._get_a_server()
@@ -254,7 +251,7 @@ class UDPRelay(object):
 
     # 返回方向
     def _handle_client(self, sock):
-        print('UDP handle client')
+        logging.info('handle client')
         data, r_addr = sock.recvfrom(BUF_SIZE)
         if not data:
             logging.debug('UDP handle_client: data is empty')
@@ -269,8 +266,7 @@ class UDPRelay(object):
                 # drop
                 return
             data = pack_addr(r_addr[0]) + struct.pack('>H', r_addr[1]) + data
-            response = encrypt.encrypt_all(self._password, self._method, 1,
-                                           data)
+            response = data
             if not response:
                 return
         else:
