@@ -165,16 +165,7 @@ class UDPRelay(object):
                 return
             else:
                 data = data[3:]
-        else:
-            data, key, iv = encrypt.dencrypt_all(self._password,
-                                                 self._method,
-                                                 data)
-            # decrypt data
-            if not data:
-                logging.debug(
-                    'UDP handle_server: data is empty after decrypt'
-                )
-                return
+
         header_result = parse_header(data)
         if header_result is None:
             return
@@ -184,18 +175,6 @@ class UDPRelay(object):
             server_addr, server_port = self._get_a_server()
         else:
             server_addr, server_port = dest_addr, dest_port
-            # spec https://shadowsocks.org/en/spec/one-time-auth.html
-            if self._one_time_auth_enable or addrtype & ADDRTYPE_AUTH:
-                self._one_time_auth_enable = True
-                if len(data) < header_length + ONETIMEAUTH_BYTES:
-                    logging.warn('UDP one time auth header is too short')
-                    return
-                _hash = data[-ONETIMEAUTH_BYTES:]
-                data = data[: -ONETIMEAUTH_BYTES]
-                _key = iv + key
-                if onetimeauth_verify(_hash, data, _key) is False:
-                    logging.warn('UDP one time auth fail')
-                    return
         addrs = self._dns_cache.get(server_addr, None)
         if addrs is None:
             addrs = socket.getaddrinfo(server_addr, server_port, 0,
