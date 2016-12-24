@@ -285,7 +285,7 @@ class UDPRelay(object):
         client_addr = self._client_fd_to_server_addr.get(sock.fileno())
         if client_addr:
             self._server_socket.sendto(response, client_addr)
-            logging.info('udp back sendto addr: %s' % client_addr)
+            logging.info('udp back sendto addr: %s, port: %d' % client_addr)
         else:
             # this packet is from somewhere else we know
             # simply drop that packet
