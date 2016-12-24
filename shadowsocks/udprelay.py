@@ -148,10 +148,9 @@ class UDPRelay(object):
 
     # 发送给目标服务器,或者发送给代理服务器。  前进方向
     def _handle_server(self):
-        logging.info('welcome to udp advance direction')
+        logging.info('welcome to udp forward direction')
         server = self._server_socket
         data, r_addr = server.recvfrom(BUF_SIZE)
-        logging.info('')
         key = None
         iv = None
         if not data:
@@ -243,7 +242,7 @@ class UDPRelay(object):
             return
         try:
             client.sendto(data, (server_addr, server_port))
-            logging.info('udp forward sendto addr: %s, port: %s' % server_addr, server_port)
+            logging.info('udp forward sendto addr: %s, port: %s' % (server_addr, server_port))
         except IOError as e:
             err = eventloop.errno_from_exception(e)
             if err in (errno.EINPROGRESS, errno.EAGAIN):
@@ -255,7 +254,7 @@ class UDPRelay(object):
     def _handle_client(self, sock):
         logging.info('welcome to udp client back direction')
         data, r_addr = sock.recvfrom(BUF_SIZE)
-        logging.info('udp back recvfrom addr: %s, port: %d' % r_addr[0], r_addr[1])
+        logging.info('udp back recvfrom addr: %s, port: %d' % (r_addr[0], r_addr[1]))
         if not data:
             logging.debug('UDP handle_client: data is empty')
             return
