@@ -149,32 +149,19 @@ class UDPRelay(object):
 
     # 发送给目标服务器,或者发送给代理服务器。  前进方向
     def _handle_server(self):
-        logging.info('welcome to udp forward direction')
         server = self._server_socket
         data, r_addr = server.recvfrom(BUF_SIZE)
-        key = None
-        iv = None
         if not data:
             logging.debug('UDP handle_server: data is empty')
         if self._stat_callback:
             self._stat_callback(self._listen_port, len(data))
-        if self._is_local:
-            frag = common.ord(data[2])
-            if frag != 0:
-                logging.warn('UDP drop a message since frag is not 0')
-                return
-            else:
-                data = data[3:]
 
         header_result = parse_header(data)
         if header_result is None:
             return
         addrtype, dest_addr, dest_port, header_length = header_result
 
-        if self._is_local:
-            server_addr, server_port = self._get_a_server()
-        else:
-            server_addr, server_port = dest_addr, dest_port
+        server_addr, server_port = dest_addr, dest_port
         addrs = self._dns_cache.get(server_addr, None)
         if addrs is None:
             addrs = socket.getaddrinfo(server_addr, server_port, 0,
@@ -204,17 +191,8 @@ class UDPRelay(object):
             self._sockets.add(client.fileno())
             self._eventloop.add(client, eventloop.POLL_IN, self)
 
-        if self._is_local:
-            key, iv, m = encrypt.gen_key_iv(self._password, self._method)
-            # spec https://shadowsocks.org/en/spec/one-time-auth.html
-            if self._one_time_auth_enable:
-                data = self._ota_chunk_data_gen(key, iv, data)
-            data = encrypt.encrypt_all_m(key, iv, m, self._method, data)
-            if not data:
-                return
-        else:
-            # 此处是去掉shadowsocks udp协议的头部 addrtype + addr + port 剩下内容
-            data = data[header_length:]
+        # 此处是去掉shadowsocks udp协议的头部 addrtype + addr + port 剩下内容
+        data = data[header_length:]
         if not data:
             return
         try:
@@ -229,44 +207,28 @@ class UDPRelay(object):
 
     # 返回方向
     def _handle_client(self, sock):
-        logging.info('welcome to udp client back direction')
         data, r_addr = sock.recvfrom(BUF_SIZE)
-        logging.info('udp back recvfrom addr: %s, port: %d' % (r_addr[0], r_addr[1]))
         if not data:
             logging.debug('UDP handle_client: data is empty')
             return
         if self._stat_callback:
             self._stat_callback(self._listen_port, len(data))
-        if not self._is_local:
-            # 接收目标服务器返回的数据和源地址,加密发送回给客户端
-            addrlen = len(r_addr[0])
-            if addrlen > 255:
-                # drop
-                return
-            data = pack_addr(r_addr[0]) + struct.pack('>H', r_addr[1]) + data
-            response = data
-            if not response:
-                return
-        else:
-            # 接收浏览器的udp数据,加密发送给服务端
-            data = encrypt.encrypt_all(self._password, self._method, 0,
-                                       data)
-            if not data:
-                return
-            header_result = parse_header(data)
-            if header_result is None:
-                return
-            addrtype, dest_addr, dest_port, header_length = header_result
-            response = b'\x00\x00\x00' + data
+
+        # 接收目标服务器返回的数据和源地址,加密发送回给客户端
+        addrlen = len(r_addr[0])
+        if addrlen > 255:
+            # drop
+            return
+        data = pack_addr(r_addr[0]) + struct.pack('>H', r_addr[1]) + data
+        response = data
+        if not response:
+            return
+
         client_addr = self._client_fd_to_server_addr.get(sock.fileno())
         if client_addr:
             self._server_socket.sendto(response, client_addr)
             print(len(response))
             logging.info('udp back sendto addr: %s, port: %d' % client_addr)
-        else:
-            # this packet is from somewhere else we know
-            # simply drop that packet
-            pass
 
     def _ota_chunk_data_gen(self, key, iv, data):
         data = common.chr(common.ord(data[0]) | ADDRTYPE_AUTH) + data[1:]

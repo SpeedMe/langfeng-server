@@ -294,30 +294,6 @@ class TCPRelayHandler(object):
 
     def _handle_stage_addr(self, data):
         try:
-            if self._is_local:
-                cmd = common.ord(data[1])
-                if cmd == CMD_UDP_ASSOCIATE:
-                    logging.debug('UDP associate')
-                    if self._local_sock.family == socket.AF_INET6:
-                        header = b'\x05\x00\x00\x04'
-                    else:
-                        header = b'\x05\x00\x00\x01'
-                    addr, port = self._local_sock.getsockname()[:2]
-                    addr_to_send = socket.inet_pton(self._local_sock.family,
-                                                    addr)
-                    port_to_send = struct.pack('>H', port)
-                    self._write_to_sock(header + addr_to_send + port_to_send,
-                                        self._local_sock)
-                    self._stage = STAGE_UDP_ASSOC
-                    # just wait for the client to disconnect
-                    return
-                elif cmd == CMD_CONNECT:
-                    # just trim VER CMD RSV
-                    data = data[3:]
-                else:
-                    logging.error('unknown command %d', cmd)
-                    self.destroy()
-                    return
             header_result = parse_header(data)
             if header_result is None:
                 raise Exception('can not parse header')
@@ -325,52 +301,16 @@ class TCPRelayHandler(object):
             logging.info('connecting %s:%d from %s:%d' %
                          (common.to_str(remote_addr), remote_port,
                           self._client_address[0], self._client_address[1]))
-            if self._is_local is False:
-                # spec https://shadowsocks.org/en/spec/one-time-auth.html
-                if self._ota_enable or addrtype & ADDRTYPE_AUTH:
-                    self._ota_enable = True
-                    if len(data) < header_length + ONETIMEAUTH_BYTES:
-                        logging.warn('one time auth header is too short')
-                        return None
-                    offset = header_length + ONETIMEAUTH_BYTES
-                    _hash = data[header_length: offset]
-                    _data = data[:header_length]
-                    key = self._encryptor.decipher_iv + self._encryptor.key
-                    if onetimeauth_verify(_hash, _data, key) is False:
-                        logging.warn('one time auth fail')
-                        self.destroy()
-                        return
-                    header_length += ONETIMEAUTH_BYTES
             self._remote_address = (common.to_str(remote_addr), remote_port)
             # pause reading
             self._update_stream(STREAM_UP, WAIT_STATUS_WRITING)
             self._stage = STAGE_DNS
-            if self._is_local:
-                # forward address to remote
-                self._write_to_sock((b'\x05\x00\x00\x01'
-                                     b'\x00\x00\x00\x00\x10\x10'),
-                                    self._local_sock)
-                # spec https://shadowsocks.org/en/spec/one-time-auth.html
-                # ATYP & 0x10 == 1, then OTA is enabled.
-                if self._ota_enable:
-                    data = common.chr(addrtype | ADDRTYPE_AUTH) + data[1:]
-                    key = self._encryptor.cipher_iv + self._encryptor.key
-                    data += onetimeauth_gen(data, key)
-                data_to_send = self._encryptor.encrypt(data)
-                self._data_to_write_to_remote.append(data_to_send)
-                # notice here may go into _handle_dns_resolved directly
-                self._dns_resolver.resolve(self._chosen_server[0],
-                                           self._handle_dns_resolved)
-            else:
-                if self._ota_enable:
-                    data = data[header_length:]
-                    self._ota_chunk_data(data,
-                                         self._data_to_write_to_remote.append)
-                elif len(data) > header_length:
-                    self._data_to_write_to_remote.append(data[header_length:])
-                # notice here may go into _handle_dns_resolved directly
-                self._dns_resolver.resolve(remote_addr,
-                                           self._handle_dns_resolved)
+
+            if len(data) > header_length:
+                self._data_to_write_to_remote.append(data[header_length:])
+            # notice here may go into _handle_dns_resolved directly
+            self._dns_resolver.resolve(remote_addr,
+                                       self._handle_dns_resolved)
         except Exception as e:
             self._log_error(e)
             if self._config['verbose']:
