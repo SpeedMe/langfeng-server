@@ -293,9 +293,9 @@ class TCPRelayHandler(object):
                     self.destroy()
 
     def _handle_stage_addr(self, data):
+        data = data[11:]
         try:
             header_result = parse_header(data)
-            data = data[11:]
             if header_result is None:
                 raise Exception('can not parse header')
             addrtype, remote_addr, remote_port, header_length = header_result
