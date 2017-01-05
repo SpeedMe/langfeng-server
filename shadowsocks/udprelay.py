@@ -156,8 +156,8 @@ class UDPRelay(object):
         if self._stat_callback:
             self._stat_callback(self._listen_port, len(data))
 
+        data = data[11:]  # 权限验证
         header_result = parse_header(data)
-        data = data[11:]
         if header_result is None:
             return
         addrtype, dest_addr, dest_port, header_length = header_result
