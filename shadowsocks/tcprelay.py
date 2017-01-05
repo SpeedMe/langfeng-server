@@ -645,15 +645,11 @@ class TCPRelay(object):
         self._timeout = config['timeout']
         self._timeouts = []  # a list for all the handlers
         # we trim the timeouts once a while
-        self._timeout_offset = 0   # last checked position for timeout
+        self._timeout_offset = 0  # last checked position for timeout
         self._handler_to_timeouts = {}  # key: handler value: index in timeouts
 
-        if is_local:
-            listen_addr = config['local_address']
-            listen_port = config['local_port']
-        else:
-            listen_addr = config['server']
-            listen_port = config['server_port']
+        listen_addr = config['server']
+        listen_port = config['server_port']
         self._listen_port = listen_port
 
         addrs = socket.getaddrinfo(listen_addr, listen_port, 0,

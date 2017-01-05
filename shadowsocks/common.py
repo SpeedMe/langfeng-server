@@ -161,6 +161,12 @@ def pack_addr(address):
 
 
 def parse_header(data):
+    print(data[0])
+    print(data[1])
+    print(data[2])
+    print(data[3])
+    print(data[4])
+    data = data[11:]
     addrtype = ord(data[0])
     dest_addr = None
     dest_port = None
