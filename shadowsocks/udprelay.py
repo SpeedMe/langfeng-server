@@ -156,7 +156,9 @@ class UDPRelay(object):
         if self._stat_callback:
             self._stat_callback(self._listen_port, len(data))
 
-        data = data[11:]  # 权限验证
+        data = data[11:]  # TODO:权限验证
+        logging.info('version:%d, user_id:%d, salt:%s', ord(data[0]), struct.unpack('>i', data[1:5])[0],
+                     struct.unpack('>s', data[5:])[0])
         header_result = parse_header(data)
         if header_result is None:
             return
