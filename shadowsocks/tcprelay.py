@@ -294,8 +294,6 @@ class TCPRelayHandler(object):
 
     def _handle_stage_addr(self, data):
         data = data[11:]
-        logging.info('version:%d, user_id:%d, salt:%s', ord(data[0]), struct.unpack('>i', data[1:5])[0],
-                     struct.unpack('>s', data[5:])[0])
         try:
             header_result = parse_header(data)
             if header_result is None:
